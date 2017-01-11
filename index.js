@@ -48,4 +48,4 @@ client.on('connect', function(connection) {
   // sendNumber();
 });
  
-client.connect('ws://172.22.6.89:3001/');
+client.connect('ws://172.22.6.89:3002/');

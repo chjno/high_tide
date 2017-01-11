@@ -1,12 +1,4 @@
-/*
-   WebSocketServer.ino
-
-    Created on: 22.05.2015
-
-*/
-
 #include <Arduino.h>
-
 #include <ESP8266WiFi.h>
 #include <WebSocketsServer.h>
 #include <Hash.h>
@@ -18,7 +10,7 @@ const char* ssid     = "itpsandbox";
 const char* password = "NYU+s0a!+P?";
 bool wifiConnected = false;
 
-WebSocketsServer webSocket = WebSocketsServer(3001);
+WebSocketsServer webSocket = WebSocketsServer(3002);
 bool socketConnected = false;
 
 const int relayPin = D5;
