@@ -59,7 +59,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
           delay(100);
         }
         // send message to client
-        webSocket.sendTXT(num, "Connected");
+        webSocket.sendTXT(num, "light");
       }
       break;
     case WStype_TEXT:
