@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "express.io": "^1.1.13",
+    "ping": "^0.2.1",
     "websocket": "^1.0.24"
   }
 }
