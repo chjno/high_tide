@@ -10,7 +10,7 @@ const char* ssid     = "itpsandbox";
 const char* password = "NYU+s0a!+P?";
 bool wifiConnected = false;
 
-WebSocketsServer webSocket = WebSocketsServer(3002);
+WebSocketsServer webSocket = WebSocketsServer(3003);
 bool socketConnected = false;
 
 const int relayPin = D5;
