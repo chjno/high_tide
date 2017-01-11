@@ -1,12 +1,42 @@
-var lswitch = {};
-var outlet = {};
-var light = {};
-var mcus = [lswitch, outlet, light];
-var switchServer = 'ws://172.22.6.89:3001/';
-var outletServer = 'ws://172.22.6.89:3002/';
-var lightServer = 'ws://172.22.6.89:3003/';
-var servers = [switchServer, outletServer, lightServer];
+var toggle = {
+  name: 'toggle',
+  alive: false,
+  sock: {},
+  server: '172.22.6.89',
+  port: 3001,
+  url: function(){
+    var link = 'ws://' + this.server + ':' + this.port + '/';
+    return link;
+  }
+};
 
+var outlet = {
+  name: 'outlet',
+  alive: false,
+  sock: {},
+  server: '172.22.6.89',
+  port: 3002,
+  url: function(){
+    var link = 'ws://' + this.server + ':' + this.port + '/';
+    return link;
+  }
+};
+
+var light = {
+  name: 'light',
+  alive: false,
+  sock: {},
+  server: '172.22.6.89',
+  port: 3003,
+  url: function(){
+    var link = 'ws://' + this.server + ':' + this.port + '/';
+    return link;
+  }
+};
+
+var mcus = [toggle, outlet, light];
+
+var ping = require('ping');
 var express = require('express');
 var app = express();
 var server = app.listen(3000, listen);
@@ -19,58 +49,55 @@ function listen(){
   console.log('Example app listening at http://' + host + ':' + port);
 }
 
-client.on('connect', function(connection) {
+client.on('connect', function(socket) {
   console.log('WebSocket Client Connected');
 
-  connection.on('message', function(message) {
+  socket.on('message', function(message) {
 
-    if (connection == lswitch){
-      console.log(message.utf8Data);
-      if (light.connected){
+    switch (socket){
+      case toggle.sock:
+        console.log('toggle ' + message.utf8Data);
         if (message.utf8Data == '0'){
-          light.sendUTF('0');
+          light.sock.sendUTF('0');
         } else if (message.utf8Data == '1'){
-          light.sendUTF('1');
+          light.sock.sendUTF('1');
         }
-      }
+        break;
+      case outlet.sock:
+        
+        break;
+    }
+
+    if (socket == toggle.sock){
     } else {
-      if (message.utf8Data == 'switch'){
-        console.log('switch connected');
-        lswitch = connection;
-      } else if (message.utf8Data == 'light'){
-        console.log('light connected');
-        light = connection;
-
-
-        // DELETE ME
-        if (lswitch.connected){
-          console.log('lswitch.connected == true');
-        } else {
-          console.log('lswitch.connected == false');
+      for (var i = 0; i < mcus.length; i++){
+        if (message.utf8Data == mcus[i].name){
+          mcus[i].sock = socket;
+          break;
         }
-
       }
     }
   });
 
-  if (light.connected){
+  // for testing light
+  if (light.sock.connected){
     var stdin = process.openStdin();
     stdin.addListener("data", function(d) {
       var input = d.toString().trim();
       if (input == '0'){
-        light.sendUTF('0');
+        light.sock.sendUTF('0');
       } else if (input == '1'){
-        light.sendUTF('1');
+        light.sock.sendUTF('1');
       }
     });
   }
 
-  connection.on('error', function(error) {
+  socket.on('error', function(error) {
     console.log("Connection Error: " + error.toString());
     // reset mcu settings and try to reconnect?
   });
 
-  connection.on('close', function() {
+  socket.on('close', function() {
     console.log('Connection Closed');
     // reset mcu settings and try to reconnect  
   });
@@ -80,34 +107,30 @@ client.on('connectFailed', function(error) {
     console.log('Connect Error: ' + error.toString());
 });
 
-function trySocketing(server, delay){
-  function conn(){
-    client.connect(server);
+function connectMCU(obj){
+
+  function sockMCU(){
+    console.log(obj.url());
+    client.connect(obj.url());
   }
 
-  setTimeout(conn, delay);
-}
-
-function connectMCUs(){
-  for (var i = 0; i < mcus.length; i++){
-    if (!mcus[i].connected){
-      trySocketing(servers[i], 1000);
+  function p(){
+    if (obj.alive){
+      clearInterval(interval);
+      setTimeout(sockMCU, 2000);
+    } else {
+      ping.sys.probe(obj.server, function(isAlive){
+        if (isAlive){
+          console.log(obj.server + ' is alive');
+          obj.alive = true;
+        } else {
+          console.log(obj.server + ' is not responding');
+        }
+      });
     }
   }
+
+  var interval = setInterval(p, 1500);
 }
 
-// DELETE ME
-if (lswitch.connected){
-  console.log('lswitch.connected == true');
-} else {
-  console.log('lswitch.connected == false');
-}
-
-// connectMCUs();
-// client.connect(lightServer);
-client.connect(switchServer);
-
-// DELETE ME
-// if (!lswitch.connected){
-//   trySocketing(lightServer, 1000);
-// }
+connectMCU(toggle);
