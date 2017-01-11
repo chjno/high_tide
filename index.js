@@ -1,3 +1,12 @@
+var lswitch = {};
+var outlet = {};
+var light = {};
+var mcus = [lswitch, outlet, light];
+var switchServer = 'ws://172.22.6.89:3001/';
+var outletServer = 'ws://172.22.6.89:3002/';
+var lightServer = 'ws://172.22.6.89:3003/';
+var servers = [switchServer, outletServer, lightServer];
+
 var express = require('express');
 var app = express();
 var server = app.listen(3000, listen);
@@ -10,17 +19,9 @@ function listen(){
   console.log('Example app listening at http://' + host + ':' + port);
 }
 
-var lswitch = {};
-var light = {};
 client.on('connect', function(connection) {
   console.log('WebSocket Client Connected');
 
-  connection.on('error', function(error) {
-      console.log("Connection Error: " + error.toString());
-  });
-  connection.on('close', function() {
-      console.log('echo-protocol Connection Closed');
-  });
   connection.on('message', function(message) {
 
     if (connection == lswitch){
@@ -39,6 +40,15 @@ client.on('connect', function(connection) {
       } else if (message.utf8Data == 'light'){
         console.log('light connected');
         light = connection;
+
+
+        // DELETE ME
+        if (lswitch.connected){
+          console.log('lswitch.connected == true');
+        } else {
+          console.log('lswitch.connected == false');
+        }
+
       }
     }
   });
@@ -54,11 +64,50 @@ client.on('connect', function(connection) {
       }
     });
   }
+
+  connection.on('error', function(error) {
+    console.log("Connection Error: " + error.toString());
+    // reset mcu settings and try to reconnect?
+  });
+
+  connection.on('close', function() {
+    console.log('Connection Closed');
+    // reset mcu settings and try to reconnect  
+  });
 });
 
 client.on('connectFailed', function(error) {
     console.log('Connect Error: ' + error.toString());
 });
- 
-// client.connect('ws://172.22.6.89:3002/');
-client.connect('ws://172.22.6.89:3001/');
+
+function trySocketing(server, delay){
+  function conn(){
+    client.connect(server);
+  }
+
+  setTimeout(conn, delay);
+}
+
+function connectMCUs(){
+  for (var i = 0; i < mcus.length; i++){
+    if (!mcus[i].connected){
+      trySocketing(servers[i], 1000);
+    }
+  }
+}
+
+// DELETE ME
+if (lswitch.connected){
+  console.log('lswitch.connected == true');
+} else {
+  console.log('lswitch.connected == false');
+}
+
+// connectMCUs();
+// client.connect(lightServer);
+client.connect(switchServer);
+
+// DELETE ME
+// if (!lswitch.connected){
+//   trySocketing(lightServer, 1000);
+// }
