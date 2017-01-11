@@ -10,6 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "express.io": "^1.1.13",
-    "request": "^2.79.0"
+    "websocket": "^1.0.24"
   }
 }
