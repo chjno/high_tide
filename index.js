@@ -96,9 +96,9 @@ client.on('connect', function (socket) {
   }
 
   socket.on('message', function (message) {
-    if (message.utf8Data != '.'){
-      console.log(message.utf8Data);
-    }
+    // if (message.utf8Data != '.'){
+    //   console.log(message.utf8Data);
+    // }
 
     if (parseInt(message.utf8Data, 10) >= 0){
       switch (socket.remoteAddress){
