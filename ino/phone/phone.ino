@@ -4,17 +4,45 @@ const int leftRelayPin = 4; // yellow to 11 left of relay
 const int leftInhPin = 5; // green to 25 left of ringer
 
 char inChar = 0;
-bool ringing = false;
 
-void ring() {
+unsigned long timestamp = 0;
+const int ringIntervals = 4;
+const int ringTime[ringIntervals] = {400, 200, 400, 2000};
+int ringIndex = 0;
+bool ringing = false;
+void ring(){
   if (!ringing){
-//    Serial.println("ring on");
+    ringing = true;
+    timestamp = millis();
     digitalWrite(leftRelayPin, HIGH); // switch relay to ringer circuit
     delay(20);
     digitalWrite(leftInhPin, LOW); // uninhibit ringer
-    ringing = true;
+  }
+  
+  unsigned long now = millis();
+  if ((unsigned long)(now - timestamp) >= ringTime[ringIndex]) {
+    ringIndex++;
+    if (ringIndex >= ringIntervals){
+      ringIndex = 0;
+    }
+    timestamp = now;
+    if (ringIndex % 2 == 0){
+      digitalWrite(leftInhPin, LOW);
+    } else {
+      digitalWrite(leftInhPin, HIGH);
+    }
   }
 }
+
+//void ring() {
+//  if (!ringing){
+////    Serial.println("ring on");
+//    digitalWrite(leftRelayPin, HIGH); // switch relay to ringer circuit
+//    delay(20);
+//    digitalWrite(leftInhPin, LOW); // uninhibit ringer
+//    ringing = true;
+//  }
+//}
 
 void killRing() {
   if (ringing){
@@ -23,6 +51,7 @@ void killRing() {
     delay(20);
     digitalWrite(leftRelayPin, LOW); // switch to audio circuit
     ringing = false;
+    ringIndex = 0;
   }
 }
 
