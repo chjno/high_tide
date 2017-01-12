@@ -136,13 +136,15 @@ void buttonState(){
   if (digitalRead(togglePin) == HIGH){
     if (!sent1){
       webSocket.broadcastTXT("1");
-      Serial.println("1");
+//      Serial.println("1");
+      digitalWrite(LED_BUILTIN, LOW);
       sent1 = true;
     }
   } else {
     if (sent1){
       webSocket.broadcastTXT("0");
-      Serial.println("0");
+//      Serial.println("0");
+      digitalWrite(LED_BUILTIN, HIGH);
       sent1 = false;
     }
   }
