@@ -2,7 +2,7 @@ var toggle = {
   name: 'toggle',
   alive: false,
   sock: {},
-  server: '172.22.6.89',
+  server: '10.0.0.2',
   port: 3001,
   url: function(){
     var link = 'ws://' + this.server + ':' + this.port + '/';
@@ -42,6 +42,9 @@ var app = express();
 var server = app.listen(3000, listen);
 var WebSocketClient = require('websocket').client;
 var client = new WebSocketClient();
+var osc = require('node-osc');
+var oscClient = new osc.Client('127.0.0.1', 3334);
+var oscServer = new osc.Server(3333, '127.0.0.1');
 
 function listen(){
   var host = server.address().address;
@@ -54,17 +57,29 @@ client.on('connect', function(socket) {
 
   socket.on('message', function(message) {
 
+    // console.log(socket == toggle.sock);
+
     switch (socket){
       case toggle.sock:
         console.log('toggle ' + message.utf8Data);
-        if (message.utf8Data == '0'){
-          light.sock.sendUTF('0');
-        } else if (message.utf8Data == '1'){
-          light.sock.sendUTF('1');
+        if (light.sock.connected){
+          if (message.utf8Data == '0'){
+            light.sock.sendUTF('0');
+          } else if (message.utf8Data == '1'){
+            light.sock.sendUTF('1');
+          }
+        } else {
+          console.log('light not connected');
+          // try connecting to light?
         }
         break;
       case outlet.sock:
-        
+        console.log('outlet ' + message.utf8Data);
+        if (message.utf8Data == '0'){
+          oscClient.send('/outlet', 1);
+        } else {
+          oscClient.send('/outlet', 2);
+        }
         break;
     }
 
@@ -134,3 +149,22 @@ function connectMCU(obj){
 }
 
 connectMCU(toggle);
+
+
+
+
+oscServer.on('noise', function(msg, rinfo){
+  console.log(msg);
+
+  if (msg == 1){
+    // if outlet plugged
+      // light off
+    // else if outlet unplugged
+      // light on
+  } else {
+    // if outlet plugged
+      // light on
+    // else if outlet unplugged
+      // light off
+  }
+});
