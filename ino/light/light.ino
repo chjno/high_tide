@@ -16,7 +16,7 @@ bool socketConnected = false;
 const int relayPin = D5;
 
 void WiFiEvent(WiFiEvent_t event) {
-  Serial.printf("[WiFi-event] event: %d\n", event);
+//  Serial.printf("[WiFi-event] event: %d\n", event);
 
   switch(event) {
     case WIFI_EVENT_STAMODE_GOT_IP:
@@ -66,12 +66,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
 //      USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
       if (payload[0] == '0'){
         digitalWrite(relayPin, LOW);
-        digitalWrite(LED_BUILTIN, LOW);
-        USE_SERIAL.println("go low");
+        digitalWrite(LED_BUILTIN, HIGH);
+//        USE_SERIAL.println("go low");
       } else if (payload[0] == '1'){
         digitalWrite(relayPin, HIGH);
-        digitalWrite(LED_BUILTIN, HIGH);
-        USE_SERIAL.println("go high");
+        digitalWrite(LED_BUILTIN, LOW);
+//        USE_SERIAL.println("go high");
       }
 
       // send message to client
