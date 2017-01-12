@@ -38,9 +38,6 @@ var mcus = [toggle, outlet, light];
 var toConnect = [toggle, outlet, light];
 var allHere = false;
 
-// var mcus = [toggle, light];
-// var mcus = [toggle];
-
 var ping = require('ping');
 var express = require('express');
 var app = express();
@@ -50,6 +47,11 @@ var client = new WebSocketClient();
 var osc = require('node-osc');
 var oscClient = new osc.Client('127.0.0.1', 3334);
 var oscServer = new osc.Server(3333, '127.0.0.1');
+var serialport = require("serialport");
+var serial = serial = new serialport("/dev/tty.usbmodem1421", {
+  baudRate: 9600,
+  autoOpen: false
+});
 
 function listen(){
   var host = server.address().address;
@@ -84,12 +86,8 @@ client.on('connect', function (socket) {
     resetTimeout = setTimeout(resetConnection, 1000);
   }
 
-  // if (connectIndex == 1){
   setTimeout(checkPulse, 5000);
-  // }
 
-  // console.log('WebSocket Client Connected');
-  // connectIndex++;
   toConnect.splice(0, 1);
   if (toConnect.length > 0){
     connectMCU();
@@ -98,7 +96,9 @@ client.on('connect', function (socket) {
   }
 
   socket.on('message', function (message) {
-    // console.log(message.utf8Data);
+    if (message.utf8Data != '.'){
+      console.log(message.utf8Data);
+    }
 
     if (parseInt(message.utf8Data, 10) >= 0){
       switch (socket.remoteAddress){
@@ -114,6 +114,15 @@ client.on('connect', function (socket) {
             console.log('light not connected');
             // try connecting to light?
           }
+
+          if (serial.isOpen()){
+            if (message.utf8Data == '0'){
+              serial.write('0');
+            } else if (message.utf8Data == '1'){
+              serial.write('1');
+            }
+          }
+
           console.log();
           break;
         case outlet.server:
@@ -165,20 +174,46 @@ client.on('connectFailed', function (error) {
     }
 });
 
-// for testing light
-var stdin = process.openStdin();
-stdin.addListener("data", function (d) {
-  if (light.sock.connected){
-    var input = d.toString().trim();
-    if (input == '0'){
-      light.sock.sendUTF('0');
-    } else if (input == '1'){
-      light.sock.sendUTF('1');
-    }
+function openSerial(){
+  try {
+    serial.open(function (err){
+      if (err){
+        setTimeout(openSerial, 5000);
+        return console.log('serial - phone error');
+      }
+      console.log('serial - phone connected');
+    });
+  } catch (e){
+    console.log(e);
   }
-});
+}
 
+openSerial();
+// serial.on('data', sendSerialData);
+serial.on('close', showPortClose);
+serial.on('error', serialError);
 
+function showPortClose(){
+  console.log('serial - phone disconnected');
+  setTimeout(openSerial, 5000);
+}
+
+function serialError(){
+  console.log('serial error');
+}
+
+// for testing light
+// var stdin = process.openStdin();
+// stdin.addListener("data", function (d) {
+//   if (light.sock.connected){
+//     var input = d.toString().trim();
+//     if (input == '0'){
+//       light.sock.sendUTF('0');
+//     } else if (input == '1'){
+//       light.sock.sendUTF('1');
+//     }
+//   }
+// });
 
 function connectMCU(){
   var obj = toConnect[0];
@@ -214,18 +249,6 @@ function connectMCU(){
   var interval = setInterval(p, 1500);
 }
 
-// function allHere(){
-//   function p(){
-//     ping.sys.probe(obj.server, function (isAlive){
-
-//     });
-//   }
-
-
-// }
-
-// var connectIndex = 0;
-// connectMCU(mcus[connectIndex]);
 connectMCU();
 
 
