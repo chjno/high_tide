@@ -72,6 +72,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         digitalWrite(relayPin, HIGH);
         digitalWrite(LED_BUILTIN, LOW);
 //        USE_SERIAL.println("go high");
+      } else if (payload[0] == '.'){
+        webSocket.sendTXT(num, ".");
       }
 
       // send message to client
@@ -134,7 +136,7 @@ void loop() {
       blink(1000);
     }
   } else {
-    blink(500);
+    blink(200);
   }
   
 }

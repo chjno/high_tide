@@ -63,7 +63,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
       }
       break;
     case WStype_TEXT:
-      USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
+//      USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
+      if (payload[0] == '.'){
+        webSocket.sendTXT(num, ".");
+      }
 
       // send message to client
       // webSocket.sendTXT(num, "message here");
