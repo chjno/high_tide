@@ -8,7 +8,7 @@ bool ringing = false;
 
 void ring() {
   if (!ringing){
-    Serial.println("ring on");
+//    Serial.println("ring on");
     digitalWrite(leftRelayPin, HIGH); // switch relay to ringer circuit
     delay(20);
     digitalWrite(leftInhPin, LOW); // uninhibit ringer
@@ -18,7 +18,7 @@ void ring() {
 
 void killRing() {
   if (ringing){
-    Serial.println("ring off");
+//    Serial.println("ring off");
     digitalWrite(leftInhPin, HIGH); // inhibit ringer
     delay(20);
     digitalWrite(leftRelayPin, LOW); // switch to audio circuit
@@ -49,11 +49,11 @@ void loop() {
 
   // phone on hook
   if (digitalRead(sPhoneL) == HIGH){
-//    if (inChar == '1'){
+    if (inChar == '1'){
       ring();
-//    } else {
-//      killRing();
-//    }
+    } else {
+      killRing();
+    }
 
   // phone off hook
   } else {
