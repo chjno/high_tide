@@ -6,17 +6,17 @@
 #define USE_SERIAL Serial
 
 WiFiClient client;
-const char* ssid     = "itpsandbox";
-const char* password = "NYU+s0a!+P?";
+const char* ssid     = "homely";
+const char* password = "Esp8266!";
 bool wifiConnected = false;
 
 WebSocketsServer webSocket = WebSocketsServer(3001);
 bool socketConnected = false;
 
-const int buttonPin = D8;
+const int togglePin = D8;
 
 void WiFiEvent(WiFiEvent_t event) {
-  Serial.printf("[WiFi-event] event: %d\n", event);
+//  Serial.printf("[WiFi-event] event: %d\n", event);
 
   switch(event) {
     case WIFI_EVENT_STAMODE_GOT_IP:
@@ -59,7 +59,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
           delay(100);
         }
         // send message to client
-        webSocket.sendTXT(num, "switch");
+        webSocket.sendTXT(num, "toggle");
       }
       break;
     case WStype_TEXT:
@@ -84,7 +84,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(buttonPin, INPUT);
+  pinMode(togglePin, INPUT);
   
   // USE_SERIAL.begin(921600);
   USE_SERIAL.begin(115200);
@@ -108,6 +108,8 @@ void setup() {
   WiFi.begin(ssid, password);
   Serial.println();
   Serial.println();
+  Serial.print("MAC: ");
+  Serial.println(WiFi.macAddress());
   Serial.println("Wait for WiFi... ");
 
   webSocket.begin();
@@ -124,14 +126,14 @@ void loop() {
       buttonState();
     }
   } else {
-    blink(500);
+    blink(200);
   }
   
 }
 
 bool sent1 = false;
 void buttonState(){
-  if (digitalRead(buttonPin) == HIGH){
+  if (digitalRead(togglePin) == HIGH){
     if (!sent1){
       webSocket.broadcastTXT("1");
       Serial.println("1");
