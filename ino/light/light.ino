@@ -10,7 +10,7 @@ const char* ssid     = "homely";
 const char* password = "Esp8266!";
 bool wifiConnected = false;
 
-WebSocketsServer webSocket = WebSocketsServer(3002);
+WebSocketsServer webSocket = WebSocketsServer(3003);
 bool socketConnected = false;
 
 const int relayPin = D5;
