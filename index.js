@@ -35,6 +35,9 @@ var light = {
 };
 
 var mcus = [toggle, outlet, light];
+var toConnect = [toggle, outlet, light];
+var allHere = false;
+
 // var mcus = [toggle, light];
 // var mcus = [toggle];
 
@@ -55,24 +58,28 @@ function listen(){
 }
 
 client.on('connect', function (socket) {
-  var socketIndex;
+  var mcuIndex;
   for (var j = 0; j < mcus.length; j++){
     if (socket.remoteAddress == mcus[j].server){
-      socketIndex = j;
+      mcuIndex = j;
     }
   }
 
   function resetConnection(){
-    // thisMCU = mcus[socketIndex];
-    mcus[socketIndex].sock = {};
+    // thisMCU = mcus[mcuIndex];
+    mcus[mcuIndex].sock = {};
     socket.close();
-    connectMCU(mcus[socketIndex]);
-    console.log('resetting ' + mcus[socketIndex].name);
+    toConnect.push(mcus[mcuIndex]);
+    if (allHere){
+      allHere = false;
+      connectMCU();
+    }
+    console.log('lost connection to ' + mcus[mcuIndex].name);
   }
   
   var resetTimeout;
   function checkPulse(){
-    console.log('checking pulse ' + mcus[socketIndex].name);
+    // console.log('checking pulse ' + mcus[mcuIndex].name);
     socket.sendUTF('.');
     resetTimeout = setTimeout(resetConnection, 1000);
   }
@@ -82,9 +89,12 @@ client.on('connect', function (socket) {
   // }
 
   // console.log('WebSocket Client Connected');
-  connectIndex++;
-  if (connectIndex < mcus.length){
-    connectMCU(mcus[connectIndex]);
+  // connectIndex++;
+  toConnect.splice(0, 1);
+  if (toConnect.length > 0){
+    connectMCU();
+  } else {
+    allHere = true;
   }
 
   socket.on('message', function (message) {
@@ -107,6 +117,8 @@ client.on('connect', function (socket) {
           console.log();
           break;
         case outlet.server:
+
+          // send to light
           console.log('outlet ' + message.utf8Data);
           if (message.utf8Data == '0'){
             oscClient.send('/outlet', 1);
@@ -116,12 +128,10 @@ client.on('connect', function (socket) {
           break;
       }
       
-    } 
-    else if (message.utf8Data == '.'){
+    } else if (message.utf8Data == '.'){
       clearTimeout(resetTimeout);
       setTimeout(checkPulse, 5000);
-    } 
-    else {
+    } else {
       for (var i = 0; i < mcus.length; i++){
         if (message.utf8Data == mcus[i].name){
           mcus[i].sock = socket;
@@ -170,7 +180,8 @@ stdin.addListener("data", function (d) {
 
 
 
-function connectMCU(obj){
+function connectMCU(){
+  var obj = toConnect[0];
 
   // function sockMCU(){
   //   console.log('connecting to ' + obj.name + '...');
@@ -182,7 +193,12 @@ function connectMCU(obj){
       clearInterval(interval);
       // obj.timeout = setTimeout(sockMCU, 2000);
       console.log('connecting to ' + obj.name + '...');
-      client.connect(obj.url());
+      try{
+        client.connect(obj.url());
+      } catch (e){
+        console.log(e);
+        client.connect(obj.url());
+      }
     } else {
       ping.sys.probe(obj.server, function (isAlive){
         if (isAlive){
@@ -208,8 +224,10 @@ function connectMCU(obj){
 
 // }
 
-var connectIndex = 0;
-connectMCU(mcus[connectIndex]);
+// var connectIndex = 0;
+// connectMCU(mcus[connectIndex]);
+connectMCU();
+
 
 oscServer.on('noise', function (msg, rinfo){
   console.log(msg);
