@@ -12,6 +12,7 @@
     "express.io": "^1.1.13",
     "node-osc": "^2.0.4",
     "ping": "^0.2.1",
+    "serialport": "^4.0.7",
     "websocket": "^1.0.24"
   }
 }
