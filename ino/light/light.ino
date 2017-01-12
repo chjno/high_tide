@@ -10,7 +10,7 @@ const char* ssid     = "itpsandbox";
 const char* password = "NYU+s0a!+P?";
 bool wifiConnected = false;
 
-WebSocketsServer webSocket = WebSocketsServer(3003);
+WebSocketsServer webSocket = WebSocketsServer(3002);
 bool socketConnected = false;
 
 const int relayPin = D5;
@@ -118,6 +118,8 @@ void setup() {
   WiFi.begin(ssid, password);
   Serial.println();
   Serial.println();
+  Serial.print("MAC: ");
+  Serial.println(WiFi.macAddress());
   Serial.println("Wait for WiFi... ");
 
   webSocket.begin();
