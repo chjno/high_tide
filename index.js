@@ -34,8 +34,8 @@ var light = {
   }
 };
 
-// var mcus = [toggle, outlet, light];
-var mcus = [toggle, light];
+var mcus = [toggle, outlet, light];
+// var mcus = [toggle, light];
 // var mcus = [toggle];
 
 var ping = require('ping');
@@ -54,14 +54,40 @@ function listen(){
   console.log('Example app listening at http://' + host + ':' + port);
 }
 
-client.on('connect', function(socket) {
+client.on('connect', function (socket) {
+  var socketIndex;
+  for (var j = 0; j < mcus.length; j++){
+    if (socket.remoteAddress == mcus[j].server){
+      socketIndex = j;
+    }
+  }
+
+  function resetConnection(){
+    // thisMCU = mcus[socketIndex];
+    mcus[socketIndex].sock = {};
+    socket.close();
+    connectMCU(mcus[socketIndex]);
+    console.log('resetting ' + mcus[socketIndex].name);
+  }
+  
+  var resetTimeout;
+  function checkPulse(){
+    console.log('checking pulse ' + mcus[socketIndex].name);
+    socket.sendUTF('.');
+    resetTimeout = setTimeout(resetConnection, 1000);
+  }
+
+  // if (connectIndex == 1){
+  setTimeout(checkPulse, 5000);
+  // }
+
   // console.log('WebSocket Client Connected');
   connectIndex++;
   if (connectIndex < mcus.length){
     connectMCU(mcus[connectIndex]);
   }
 
-  socket.on('message', function(message) {
+  socket.on('message', function (message) {
     // console.log(message.utf8Data);
 
     if (parseInt(message.utf8Data, 10) >= 0){
@@ -90,35 +116,48 @@ client.on('connect', function(socket) {
           break;
       }
       
-    } else {
+    } 
+    else if (message.utf8Data == '.'){
+      clearTimeout(resetTimeout);
+      setTimeout(checkPulse, 5000);
+    } 
+    else {
       for (var i = 0; i < mcus.length; i++){
         if (message.utf8Data == mcus[i].name){
           mcus[i].sock = socket;
           console.log(mcus[i].name + ' connected');
           break;
         }
-      } 
+      }
     }
   });
 
-  socket.on('error', function(error) {
+  socket.on('error', function (error) {
     console.log("Connection Error: " + error.toString());
     // reset mcu settings and try to reconnect?
   });
 
-  socket.on('close', function() {
+  socket.on('close', function () {
     console.log('Connection Closed');
     // reset mcu settings and try to reconnect  
   });
 });
 
-client.on('connectFailed', function(error) {
+client.on('connectFailed', function (error) {
     console.log('Connect Error: ' + error.toString());
+    // console.log(error);
+    // var url = 'ws://' + error.address + ':' + error.port + '/';
+    for (var i = 0; i < mcus.length; i++){
+      if (error.address == mcus[i].server){
+        connectMCU(mcus[i]);
+        break;
+      }
+    }
 });
 
 // for testing light
 var stdin = process.openStdin();
-stdin.addListener("data", function(d) {
+stdin.addListener("data", function (d) {
   if (light.sock.connected){
     var input = d.toString().trim();
     if (input == '0'){
@@ -133,17 +172,19 @@ stdin.addListener("data", function(d) {
 
 function connectMCU(obj){
 
-  function sockMCU(){
-    console.log('connecting to ' + obj.name + '...');
-    client.connect(obj.url());
-  }
+  // function sockMCU(){
+  //   console.log('connecting to ' + obj.name + '...');
+  //   client.connect(obj.url());
+  // }
 
   function p(){
     if (obj.alive){
       clearInterval(interval);
-      obj.timeout = setTimeout(sockMCU, 2000);
+      // obj.timeout = setTimeout(sockMCU, 2000);
+      console.log('connecting to ' + obj.name + '...');
+      client.connect(obj.url());
     } else {
-      ping.sys.probe(obj.server, function(isAlive){
+      ping.sys.probe(obj.server, function (isAlive){
         if (isAlive){
           console.log(obj.server + ' is alive');
           obj.alive = true;
@@ -157,10 +198,20 @@ function connectMCU(obj){
   var interval = setInterval(p, 1500);
 }
 
+// function allHere(){
+//   function p(){
+//     ping.sys.probe(obj.server, function (isAlive){
+
+//     });
+//   }
+
+
+// }
+
 var connectIndex = 0;
 connectMCU(mcus[connectIndex]);
 
-oscServer.on('noise', function(msg, rinfo){
+oscServer.on('noise', function (msg, rinfo){
   console.log(msg);
 
   if (msg == 1){
