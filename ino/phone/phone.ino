@@ -34,16 +34,6 @@ void ring(){
   }
 }
 
-//void ring() {
-//  if (!ringing){
-////    Serial.println("ring on");
-//    digitalWrite(leftRelayPin, HIGH); // switch relay to ringer circuit
-//    delay(20);
-//    digitalWrite(leftInhPin, LOW); // uninhibit ringer
-//    ringing = true;
-//  }
-//}
-
 void killRing() {
   if (ringing){
 //    Serial.println("ring off");
