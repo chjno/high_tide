@@ -6,8 +6,8 @@
 #define USE_SERIAL Serial
 
 WiFiClient client;
-const char* ssid     = "itpsandbox";
-const char* password = "NYU+s0a!+P?";
+const char* ssid     = "homely";
+const char* password = "Esp8266!";
 bool wifiConnected = false;
 
 WebSocketsServer webSocket = WebSocketsServer(3002);
