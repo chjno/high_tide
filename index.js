@@ -248,10 +248,14 @@ serial.on('error', serialError);
 
 function onData(data){
   console.log('offHook ' + data.toString());
-  offHook = data.toString();
+  if (parseInt(data, 10) >= 0){
+    offHook = data.toString();
 
-  tellMax('m', offHook);
-  tellLight('p', offHook);
+    tellMax('m', offHook);
+    tellLight('p', offHook);
+  } else {
+    tellLight('r', data.toString());
+  }
 }
 
 function showPortClose(){
@@ -278,20 +282,20 @@ oscServer.on('gain', function (state, rinfo){
 // testing from node console
 ///////////////////////////////////////////////////////////////////////////////
 
-var stdin = process.openStdin();
-stdin.addListener("data", function (input) {
-  switch (input[0]){
-    case p:
-      tellPhone(input[1]);
-      break;
-    case m:
-      tellMax(input[1], input[2]);
-      break;
-    case l:
-      tellLight(input[1], input[2]);
-      break;
-  }
-});
+// var stdin = process.openStdin();
+// stdin.addListener("data", function (input) {
+//   switch (input[0]){
+//     case p:
+//       tellPhone(input[1]);
+//       break;
+//     case m:
+//       tellMax(input[1], input[2]);
+//       break;
+//     case l:
+//       tellLight(input[1], input[2]);
+//       break;
+//   }
+// });
 
 ///////////////////////////////////////////////////////////////////////////////
 // connecting to devices
