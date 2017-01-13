@@ -13,8 +13,8 @@ bool wifiConnected = false;
 WebSocketsServer webSocket = WebSocketsServer(3003);
 bool socketConnected = false;
 
-const int outletPin = D5;
-const int relayPin = D8;
+const int relayPin = D5;
+const int outletPin = D8;
 
 bool toggleOn = false;
 bool offHook = false;
@@ -181,7 +181,6 @@ void light(int state){
   digitalWrite(relayPin, state);
 }
 
-bool plugged = false;
 void plugState(){
   if (digitalRead(outletPin) == HIGH){
     if (!plugged){
@@ -198,6 +197,7 @@ void plugState(){
       plugged = false;
     }
   }
+  delay(100);
 }
 
 void maybeLight(){
