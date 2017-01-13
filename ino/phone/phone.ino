@@ -66,7 +66,9 @@ void loop() {
 //    Serial.println(inChar);
   }
 
-  // phone on hook
+  buttonState();
+
+//  phone on hook
   if (digitalRead(sPhoneL) == HIGH){
     if (inChar == '1'){
       ring();
@@ -77,6 +79,35 @@ void loop() {
   // phone off hook
   } else {
     killRing();
+  }
+}
+
+bool offHook = false;
+unsigned long hookStamp = 0;
+void buttonState(){
+  unsigned long now = millis();
+
+  if ((unsigned long)(now - hookStamp) >= 100) {
+    if (digitalRead(sPhoneL) == LOW){
+      if (!offHook){
+        Serial.println("1");
+        digitalWrite(LED_BUILTIN, LOW);
+        offHook = true;
+      }
+//      if (inChar == '1'){
+//        ring();
+//      } else {
+//        killRing();
+//      }
+    } else {
+      if (offHook){
+        Serial.println("0");
+        digitalWrite(LED_BUILTIN, HIGH);
+        offHook = false;
+      }
+//      killRing();
+    }
+    hookStamp = now;
   }
 }
 
