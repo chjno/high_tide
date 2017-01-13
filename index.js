@@ -8,9 +8,11 @@ var osc = require('node-osc');
 var oscClient = new osc.Client('127.0.0.1', 3334);
 var oscServer = new osc.Server(3333, '127.0.0.1');
 var serialport = require("serialport");
-var serial = new serialport("/dev/tty.usbmodem1421", {
+var serial = new serialport("/dev/tty.usbmodem1411", {
+// var serial = new serialport("/dev/tty.usbmodem1421", {
   baudRate: 9600,
-  autoOpen: false
+  autoOpen: false,
+  parser: serialport.parsers.readline("\n")
 });
 
 function listen(){
@@ -65,20 +67,42 @@ var toConnect = [toggle, outlet, light];
 var allHere = false;
 
 
+var toggleOn = 0;
+var offHook = 0;
+var gain = 0;
+var outletHot = 0;
+var plugged = 0;
+
 function tellLight(device, state){
   if (light.sock.connected){
+    console.log('tellLight ' + device + state);
     light.sock.sendUTF(device + state);
   }
 }
 
 function tellPhone(state){
   if (serial.isOpen()){
+    console.log('tellPhone ' + state);
     serial.write(state);
   }
 }
 
 function tellMax(device, state){
+  console.log('tellMax ' + device + parseInt(state, 10));
   oscClient.send('/' + device, parseInt(state, 10));
+}
+
+function broadcastStates(){
+  tellPhone(toggleOn);
+
+  tellMax('t', toggleOn);
+  tellMax('o', outletHot);
+  tellMax('l', plugged);
+
+  tellLight('t', toggleOn);
+  tellLight('p', offHook);
+  tellLight('m', gain);
+  tellLight('o', outletHot);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -126,25 +150,28 @@ client.on('connect', function (socket) {
       switch (socket.remoteAddress){
 
         case toggle.server:
-          console.log('toggle ' + message.utf8Data);
+          console.log('toggleOn ' + message.utf8Data);
+          toggleOn = message.utf8Data;
 
-          tellLight('t', message.utf8Data); 
-          tellPhone(message.utf8Data);
-          tellMax('t', message.utf8Data);
+          tellLight('t', toggleOn);
+          tellPhone(toggleOn);
+          tellMax('t', toggleOn);
           break;
 
         case outlet.server:
-          console.log('outlet ' + message.utf8Data);
+          console.log('outletHot ' + message.utf8Data);
+          outletHot = message.utf8Data;
 
-          tellLight('o', message.utf8Data);
-          tellMax('o', message.utf8Data);
+          tellLight('o', outletHot);
+          tellMax('o', outletHot);
           break;
 
 
         case light.server:
-          console.log('light plugged ' + message.utf8Data);
+          console.log('plugged ' + message.utf8Data);
+          plugged = message.utf8Data;
 
-          tellMax('l', message.utf8Data);
+          tellMax('l', plugged);
           break;
       }
       
@@ -169,6 +196,7 @@ client.on('connect', function (socket) {
         connectMCU();
       } else {
         allHere = true;
+        setTimeout(broadcastStates, 1000);
       }
     }
   });
@@ -214,9 +242,17 @@ function openSerial(){
 }
 
 openSerial();
-// serial.on('data', sendSerialData);
+serial.on('data', onData);
 serial.on('close', showPortClose);
 serial.on('error', serialError);
+
+function onData(data){
+  console.log('offHook ' + data.toString());
+  offHook = data.toString();
+
+  tellMax('m', offHook);
+  tellLight('p', offHook);
+}
 
 function showPortClose(){
   console.log('serial - phone disconnected');
@@ -232,9 +268,10 @@ function serialError(){
 ///////////////////////////////////////////////////////////////////////////////
 
 oscServer.on('gain', function (state, rinfo){
-  console.log(state);
+  console.log('gain ' + state[1]);
+  gain = state[1];
 
-  tellLight('m' + state.toString());
+  tellLight('m', gain);
 });
 
 ///////////////////////////////////////////////////////////////////////////////
