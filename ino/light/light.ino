@@ -165,15 +165,16 @@ void loop() {
     if (!socketConnected){
       blink(1000);
     } 
-//    else {
-//      plugState();
-//    }
+    else {
+      plugState();
+      maybeLight();
+    }
   } else {
     blink(200);
   }
 
-  plugState();
-  maybeLight();
+//  plugState();
+//  maybeLight();
   
 }
 
@@ -181,23 +182,27 @@ void light(int state){
   digitalWrite(relayPin, state);
 }
 
+unsigned long plugStamp = 0;
 void plugState(){
-  if (digitalRead(outletPin) == HIGH){
-    if (!plugged){
-      webSocket.broadcastTXT("1");
-//      Serial.println("1");
-      digitalWrite(LED_BUILTIN, LOW);
-      plugged = true;
-    }
-  } else {
-    if (plugged){
-      webSocket.broadcastTXT("0");
-//      Serial.println("0");
-      digitalWrite(LED_BUILTIN, HIGH);
-      plugged = false;
+  unsigned long now = millis();
+
+  if ((unsigned long)(now - plugStamp) >= 100) {
+    if (digitalRead(outletPin) == HIGH){
+      if (!plugged){
+        webSocket.broadcastTXT("1");
+  //      Serial.println("1");
+        digitalWrite(LED_BUILTIN, LOW);
+        plugged = true;
+      }
+    } else {
+      if (plugged){
+        webSocket.broadcastTXT("0");
+  //      Serial.println("0");
+        digitalWrite(LED_BUILTIN, HIGH);
+        plugged = false;
+      }
     }
   }
-  delay(100);
 }
 
 void maybeLight(){
