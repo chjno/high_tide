@@ -13,7 +13,14 @@ bool wifiConnected = false;
 WebSocketsServer webSocket = WebSocketsServer(3003);
 bool socketConnected = false;
 
-const int relayPin = D5;
+const int outletPin = D5;
+const int relayPin = D8;
+
+bool toggleOn = false;
+bool offHook = false;
+bool gain = false;
+bool outletHot = false;
+bool plugged = false;
 
 void WiFiEvent(WiFiEvent_t event) {
 //  Serial.printf("[WiFi-event] event: %d\n", event);
@@ -64,17 +71,39 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
       break;
     case WStype_TEXT:
 //      USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
-      if (payload[0] == '0'){
-        digitalWrite(relayPin, LOW);
-        digitalWrite(LED_BUILTIN, HIGH);
-//        USE_SERIAL.println("go low");
-      } else if (payload[0] == '1'){
-        digitalWrite(relayPin, HIGH);
-        digitalWrite(LED_BUILTIN, LOW);
-//        USE_SERIAL.println("go high");
+
+      if (payload[0] == 't'){
+        if (payload[1] == '0'){
+          toggleOn = false;
+        } else if (payload[1] == '1'){
+          toggleOn = true;
+        }
+      } else if (payload[0] == 'o'){
+        if (payload[1] == '0'){
+          outletHot = false;
+        } else if (payload[1] == '1'){
+          outletHot = true;
+        }
+      } else if (payload[0] == 'p'){
+        if (payload[1] == '0'){
+          offHook = false;
+        } else if (payload[1] == '1'){
+          offHook = true;
+        }
+      } else if (payload[0] == 'm'){
+        if (payload[1] == '0'){
+          gain = false;
+        } else if (payload[1] == '1'){
+          gain = true;
+        }
       } else if (payload[0] == '.'){
         webSocket.sendTXT(num, ".");
       }
+
+//      USE_SERIAL.print("toggleOn: ");
+//      USE_SERIAL.println(toggleOn);
+//      USE_SERIAL.print("outletHot: ");
+//      USE_SERIAL.println(outletHot);
 
       // send message to client
       // webSocket.sendTXT(num, "message here");
@@ -96,6 +125,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(relayPin, OUTPUT);
+  pinMode(outletPin, INPUT);
   digitalWrite(relayPin, LOW);
   
   // USE_SERIAL.begin(921600);
@@ -134,11 +164,60 @@ void loop() {
   if (wifiConnected){
     if (!socketConnected){
       blink(1000);
-    }
+    } 
+//    else {
+//      plugState();
+//    }
   } else {
     blink(200);
   }
+
+  plugState();
+  maybeLight();
   
+}
+
+void light(int state){
+  digitalWrite(relayPin, state);
+}
+
+bool plugged = false;
+void plugState(){
+  if (digitalRead(outletPin) == HIGH){
+    if (!plugged){
+      webSocket.broadcastTXT("1");
+//      Serial.println("1");
+      digitalWrite(LED_BUILTIN, LOW);
+      plugged = true;
+    }
+  } else {
+    if (plugged){
+      webSocket.broadcastTXT("0");
+//      Serial.println("0");
+      digitalWrite(LED_BUILTIN, HIGH);
+      plugged = false;
+    }
+  }
+}
+
+void maybeLight(){
+  if (plugged && outletHot){
+    if (toggleOn){
+      if (offHook){
+        if (gain){
+          light(1);
+        } else {
+          light(0);
+        }
+      } else {
+        light(1);
+      }
+    } else {
+      light(1);
+    }
+  } else {
+    light(0);
+  }
 }
 
 unsigned long timestamp = 0;
