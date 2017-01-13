@@ -1,3 +1,28 @@
+var ping = require('ping');
+var express = require('express');
+var app = express();
+var server = app.listen(3000, listen);
+var WebSocketClient = require('websocket').client;
+var client = new WebSocketClient();
+var osc = require('node-osc');
+var oscClient = new osc.Client('127.0.0.1', 3334);
+var oscServer = new osc.Server(3333, '127.0.0.1');
+var serialport = require("serialport");
+var serial = new serialport("/dev/tty.usbmodem1421", {
+  baudRate: 9600,
+  autoOpen: false
+});
+
+function listen(){
+  var host = server.address().address;
+  var port = server.address().port;
+  console.log('Example app listening at http://' + host + ':' + port);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// global variables
+///////////////////////////////////////////////////////////////////////////////
+
 var toggle = {
   name: 'toggle',
   alive: false,
@@ -35,29 +60,30 @@ var light = {
 };
 
 var mcus = [toggle, outlet, light];
-var toConnect = [toggle, outlet, light];
+// var toConnect = [toggle, outlet, light];
+var toConnect = [toggle];
 var allHere = false;
 
-var ping = require('ping');
-var express = require('express');
-var app = express();
-var server = app.listen(3000, listen);
-var WebSocketClient = require('websocket').client;
-var client = new WebSocketClient();
-var osc = require('node-osc');
-var oscClient = new osc.Client('127.0.0.1', 3334);
-var oscServer = new osc.Server(3333, '127.0.0.1');
-var serialport = require("serialport");
-var serial = serial = new serialport("/dev/tty.usbmodem1421", {
-  baudRate: 9600,
-  autoOpen: false
-});
 
-function listen(){
-  var host = server.address().address;
-  var port = server.address().port;
-  console.log('Example app listening at http://' + host + ':' + port);
+function tellLight(device, state){
+  if (light.sock.connected){
+    light.sock.sendUTF(device + state);
+  }
 }
+
+function tellPhone(state){
+  if (serial.isOpen()){
+    serial.write(state);
+  }
+}
+
+function tellMax(device, state){
+  oscClient.send('/' + device, parseInt(state, 10));
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// websockets
+///////////////////////////////////////////////////////////////////////////////
 
 client.on('connect', function (socket) {
   var mcuIndex;
@@ -88,58 +114,46 @@ client.on('connect', function (socket) {
 
   setTimeout(checkPulse, 5000);
 
-  toConnect.splice(0, 1);
-  if (toConnect.length > 0){
-    connectMCU();
-  } else {
-    allHere = true;
-  }
-
   socket.on('message', function (message) {
+    // testing
     // if (message.utf8Data != '.'){
     //   console.log(message.utf8Data);
     // }
 
+    // if message is an int
     if (parseInt(message.utf8Data, 10) >= 0){
+
       switch (socket.remoteAddress){
+
         case toggle.server:
           console.log('toggle ' + message.utf8Data);
-          if (light.sock.connected){
-            if (message.utf8Data == '0'){
-              light.sock.sendUTF('0');
-            } else if (message.utf8Data == '1'){
-              light.sock.sendUTF('1');
-            }
-          } else {
-            console.log('light not connected');
-            // try connecting to light?
-          }
 
-          if (serial.isOpen()){
-            if (message.utf8Data == '0'){
-              serial.write('0');
-            } else if (message.utf8Data == '1'){
-              serial.write('1');
-            }
-          }
-
-          console.log();
+          tellLight('t', message.utf8Data); 
+          tellPhone(message.utf8Data);
+          tellMax('t', message.utf8Data);
           break;
-        case outlet.server:
 
-          // send to light
+        case outlet.server:
           console.log('outlet ' + message.utf8Data);
-          if (message.utf8Data == '0'){
-            oscClient.send('/outlet', 1);
-          } else {
-            oscClient.send('/outlet', 2);
-          }
+
+          tellLight('o', message.utf8Data);
+          tellMax('o', message.utf8Data);
+          break;
+
+
+        case light.server:
+          console.log('light plugged ' + message.utf8Data);
+
+          tellMax('l', message.utf8Data);
           break;
       }
       
+    // pulse received
     } else if (message.utf8Data == '.'){
       clearTimeout(resetTimeout);
       setTimeout(checkPulse, 5000);
+
+    // device connected
     } else {
       for (var i = 0; i < mcus.length; i++){
         if (message.utf8Data == mcus[i].name){
@@ -147,6 +161,14 @@ client.on('connect', function (socket) {
           console.log(mcus[i].name + ' connected');
           break;
         }
+      }
+
+      // remove device from list of devices to connect
+      toConnect.splice(0, 1);
+      if (toConnect.length > 0){
+        connectMCU();
+      } else {
+        allHere = true;
       }
     }
   });
@@ -164,15 +186,17 @@ client.on('connect', function (socket) {
 
 client.on('connectFailed', function (error) {
     console.log('Connect Error: ' + error.toString());
-    // console.log(error);
-    // var url = 'ws://' + error.address + ':' + error.port + '/';
-    for (var i = 0; i < mcus.length; i++){
-      if (error.address == mcus[i].server){
-        connectMCU(mcus[i]);
-        break;
-      }
-    }
+    connectMCU();
+    // for (var i = 0; i < mcus.length; i++){
+    //   if (error.address == mcus[i].server){
+    //     break;
+    //   }
+    // }
 });
+
+///////////////////////////////////////////////////////////////////////////////
+// serial (phone)
+///////////////////////////////////////////////////////////////////////////////
 
 function openSerial(){
   try {
@@ -202,18 +226,38 @@ function serialError(){
   console.log('serial error');
 }
 
-// for testing light
-// var stdin = process.openStdin();
-// stdin.addListener("data", function (d) {
-//   if (light.sock.connected){
-//     var input = d.toString().trim();
-//     if (input == '0'){
-//       light.sock.sendUTF('0');
-//     } else if (input == '1'){
-//       light.sock.sendUTF('1');
-//     }
-//   }
-// });
+///////////////////////////////////////////////////////////////////////////////
+// osc (max)
+///////////////////////////////////////////////////////////////////////////////
+
+oscServer.on('gain', function (state, rinfo){
+  console.log(state);
+
+  tellLight('m' + state.toString());
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// testing from node console
+///////////////////////////////////////////////////////////////////////////////
+
+var stdin = process.openStdin();
+stdin.addListener("data", function (input) {
+  switch (input[0]){
+    case p:
+      tellPhone(input[1]);
+      break;
+    case m:
+      tellMax(input[1], input[2]);
+      break;
+    case l:
+      tellLight(input[1], input[2]);
+      break;
+  }
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// connecting to devices
+///////////////////////////////////////////////////////////////////////////////
 
 function connectMCU(){
   var obj = toConnect[0];
@@ -249,21 +293,6 @@ function connectMCU(){
   var interval = setInterval(p, 1500);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 connectMCU();
-
-
-oscServer.on('noise', function (msg, rinfo){
-  console.log(msg);
-
-  if (msg == 1){
-    // if outlet plugged
-      // light off
-    // else if outlet unplugged
-      // light on
-  } else {
-    // if outlet plugged
-      // light on
-    // else if outlet unplugged
-      // light off
-  }
-});
