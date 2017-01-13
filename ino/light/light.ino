@@ -67,6 +67,11 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         }
         // send message to client
         webSocket.sendTXT(num, "light");
+        if (digitalRead(outletPin) == LOW){
+          webSocket.broadcastTXT("0");
+        } else {
+          webSocket.broadcastTXT("1");
+        }
       }
       break;
     case WStype_TEXT:
@@ -178,8 +183,20 @@ void loop() {
   
 }
 
+bool lightOn = false;
 void light(int state){
-  digitalWrite(relayPin, state);
+  if (state == 0){
+    if (lightOn){
+      digitalWrite(relayPin, LOW);
+      lightOn = false;
+    }
+  } else if (state == 1){
+    if (!lightOn){
+      digitalWrite(relayPin, HIGH);
+      lightOn = true;
+    }
+  }
+  
 }
 
 unsigned long plugStamp = 0;
@@ -202,26 +219,112 @@ void plugState(){
         plugged = false;
       }
     }
+    plugStamp = now;
+  }
+}
+
+unsigned long flickerStamp = 0;
+bool flickering = false;
+void flicker(){
+  unsigned long now2 = millis();
+
+  if (!flickering){
+//    Serial.println("flicker off");
+    light(0);
+  } else {
+//    Serial.println("flickering");
+    if ((unsigned long)(now2 - flickerStamp) >= 100) {
+      flickerStamp = now2;
+      if (lightOn){
+        Serial.println("flicker off");
+        light(0);
+      } else {
+        Serial.println("flicker on");
+        light(1);
+      }
+    }
+  }
+
+}
+
+unsigned long ringStamp = 0;
+const int ringIntervals = 4;
+const int ringTime[ringIntervals] = {400, 200, 400, 2000};
+int ringIndex = 0;
+bool ringing = false;
+void ring(){
+  unsigned long now = millis();
+  
+  if (!ringing){
+    Serial.println("ringing");
+    ringing = true;
+    ringStamp = millis();
+  }
+  
+  if ((unsigned long)(now - ringStamp) >= ringTime[ringIndex]) {
+    ringIndex++;
+    if (ringIndex >= ringIntervals){
+      ringIndex = 0;
+    }
+    ringStamp = now;
+    if (ringIndex % 2 == 0){
+//      light(1);
+      flickering = true;
+    } else {
+//      light(0);
+      flickering = false;
+    }
+  }
+}
+
+void killRing(){
+  if (ringing){
+    Serial.println("kill ring");
+    ringing = false;
+    ringIndex = 0;
   }
 }
 
 void maybeLight(){
-  if (plugged && outletHot){
-    if (toggleOn){
-      if (offHook){
-        if (gain){
-          light(1);
+  if (plugged){
+    if (outletHot){
+      if (toggleOn){
+        if (offHook){
+          if (gain){
+            light(1);
+          } else {
+            light(0);
+          }
         } else {
-          light(0);
+          light(1);
         }
       } else {
-        light(1);
+        if (offHook){
+          if (gain){
+            light(0);
+          } else {
+            light(1);
+          }
+        } else {
+          light(1);
+        }
       }
     } else {
-      light(1);
+      if (toggleOn){
+        if (!offHook){
+          ring();
+          flicker();
+        }
+      } else {
+        light(0);
+      }
     }
   } else {
     light(0);
+  }
+
+  if (!(!outletHot && toggleOn && !offHook)){
+    killRing();
   }
 }
 
@@ -233,13 +336,12 @@ void blink(int pause){
   if ((unsigned long)(now - timestamp) >= pause) {
     if (ledOn){
       digitalWrite(LED_BUILTIN, HIGH);
-      timestamp = now;
       ledOn = false;
     } else {
       digitalWrite(LED_BUILTIN, LOW);
-      timestamp = now;
       ledOn = true;
     }
+    timestamp = now;
   }
 }
 
