@@ -61,6 +61,11 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         }
         // send message to client
         webSocket.sendTXT(num, "outlet");
+        if (digitalRead(togglePin) == LOW){
+          webSocket.broadcastTXT("0");
+        } else {
+          webSocket.broadcastTXT("1");
+        }
       }
       break;
     case WStype_TEXT:
