@@ -7,7 +7,7 @@ char inChar = 0;
 
 unsigned long timestamp = 0;
 const int ringIntervals = 4;
-const int ringTime[ringIntervals] = {400, 200, 400, 2000};
+const int ringTime[ringIntervals] = {400, 200, 400, 10000};
 int ringIndex = 0;
 bool ringing = false;
 void ring(){
@@ -27,8 +27,10 @@ void ring(){
     }
     timestamp = now;
     if (ringIndex % 2 == 0){
+      Serial.println("!");
       digitalWrite(leftInhPin, LOW);
     } else {
+      Serial.println("_");
       digitalWrite(leftInhPin, HIGH);
     }
   }

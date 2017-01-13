@@ -21,6 +21,7 @@ bool offHook = false;
 bool gain = false;
 bool outletHot = false;
 bool plugged = false;
+bool flickering = false;
 
 void WiFiEvent(WiFiEvent_t event) {
 //  Serial.printf("[WiFi-event] event: %d\n", event);
@@ -100,6 +101,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
           gain = false;
         } else if (payload[1] == '1'){
           gain = true;
+        }
+      } else if (payload[0] == 'r'){
+        if (payload[1] == '_'){
+          flickering = false;
+        } else if (payload[1] == '!'){
+          flickering = true;
         }
       } else if (payload[0] == '.'){
         webSocket.sendTXT(num, ".");
@@ -207,14 +214,14 @@ void plugState(){
     if (digitalRead(outletPin) == HIGH){
       if (!plugged){
         webSocket.broadcastTXT("1");
-  //      Serial.println("1");
+//        Serial.println("1");
         digitalWrite(LED_BUILTIN, LOW);
         plugged = true;
       }
     } else {
       if (plugged){
         webSocket.broadcastTXT("0");
-  //      Serial.println("0");
+//        Serial.println("0");
         digitalWrite(LED_BUILTIN, HIGH);
         plugged = false;
       }
@@ -224,7 +231,6 @@ void plugState(){
 }
 
 unsigned long flickerStamp = 0;
-bool flickering = false;
 void flicker(){
   unsigned long now2 = millis();
 
@@ -236,53 +242,15 @@ void flicker(){
     if ((unsigned long)(now2 - flickerStamp) >= 100) {
       flickerStamp = now2;
       if (lightOn){
-        Serial.println("flicker off");
+//        Serial.println("flicker off");
         light(0);
       } else {
-        Serial.println("flicker on");
+//        Serial.println("flicker on");
         light(1);
       }
     }
   }
 
-}
-
-unsigned long ringStamp = 0;
-const int ringIntervals = 4;
-const int ringTime[ringIntervals] = {400, 200, 400, 2000};
-int ringIndex = 0;
-bool ringing = false;
-void ring(){
-  unsigned long now = millis();
-  
-  if (!ringing){
-    Serial.println("ringing");
-    ringing = true;
-    ringStamp = millis();
-  }
-  
-  if ((unsigned long)(now - ringStamp) >= ringTime[ringIndex]) {
-    ringIndex++;
-    if (ringIndex >= ringIntervals){
-      ringIndex = 0;
-    }
-    ringStamp = now;
-    if (ringIndex % 2 == 0){
-//      light(1);
-      flickering = true;
-    } else {
-//      light(0);
-      flickering = false;
-    }
-  }
-}
-
-void killRing(){
-  if (ringing){
-    Serial.println("kill ring");
-    ringing = false;
-    ringIndex = 0;
-  }
 }
 
 void maybeLight(){
@@ -312,7 +280,6 @@ void maybeLight(){
     } else {
       if (toggleOn){
         if (!offHook){
-          ring();
           flicker();
         }
       } else {
@@ -321,10 +288,6 @@ void maybeLight(){
     }
   } else {
     light(0);
-  }
-
-  if (!(!outletHot && toggleOn && !offHook)){
-    killRing();
   }
 }
 
