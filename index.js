@@ -60,8 +60,8 @@ var light = {
 };
 
 var mcus = [toggle, outlet, light];
-// var toConnect = [toggle, outlet, light];
-var toConnect = [toggle];
+var toConnect = [toggle, outlet, light];
+// var toConnect = [light];
 var allHere = false;
 
 
@@ -186,6 +186,7 @@ client.on('connect', function (socket) {
 
 client.on('connectFailed', function (error) {
     console.log('Connect Error: ' + error.toString());
+    toConnect[0].alive = false;
     connectMCU();
     // for (var i = 0; i < mcus.length; i++){
     //   if (error.address == mcus[i].server){
